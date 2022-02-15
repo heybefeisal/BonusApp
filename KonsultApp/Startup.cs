@@ -1,13 +1,20 @@
+
+
+using KonsultApp.DTO.Configurations;
+using KonsultApp.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using System;
+using AutoMapper;
+using KonsultApp.DTO.Configurations;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,9 +35,36 @@ namespace KonsultApp
         {
 
             services.AddControllers();
+            services.AddOptions();
+
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAllOrigin", builder => builder.AllowAnyMethod().AllowAnyHeader().AllowAnyOrigin());
+            });
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "KonsultApp", Version = "v1" });
+            });
+
+            var mapperConfig = new MapperConfiguration(m =>
+            {
+                m.AddProfile(new MapConfiguration());
+            });
+
+            var mapper = mapperConfig.CreateMapper();
+            services.AddSingleton(mapper);
+
+            services.AddDbContext<BonusDBContext>(options =>
+            {
+                options.UseSqlServer(Configuration.GetConnectionString("BonusDBConnection"),
+                    sqlServerOptionsAction: sqloptions =>
+                    {
+                        sqloptions.EnableRetryOnFailure(
+                            maxRetryCount: 10,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorNumbersToAdd: null);
+                    });
             });
         }
 
@@ -44,12 +78,18 @@ namespace KonsultApp
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "KonsultApp v1"));
             }
 
-            app.UseHttpsRedirection();
 
             app.UseRouting();
 
+            app.UseCors("AllowAllOrigin");
+
             app.UseAuthorization();
 
+            app.UseSwagger();
+            app.UseSwaggerUI(s =>
+            {
+                s.SwaggerEndpoint("/swagger/v1/swagger.json", "BonusDB - API");
+            });
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
