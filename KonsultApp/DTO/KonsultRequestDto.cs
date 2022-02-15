@@ -7,5 +7,8 @@ namespace KonsultApp.DTO
 {
     public class KonsultRequestDto
     {
+        public string ForNamn { get; set; }
+        public string EfterNamn { get; set; }
+        public int AntalAr { get; set; }
     }
 }
